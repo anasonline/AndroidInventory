@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Android Inventory</string>
+
+    <string name="empty_view_title_text">It\'s empty here</string>
+    <string name="empty_view_subtitle_text">Click the floating button to add products</string>
+
+</resources>
