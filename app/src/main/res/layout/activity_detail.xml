@@ -131,39 +131,42 @@
         app:layout_constraintTop_toBottomOf="@+id/orderBtn" />
 
     <EditText
-        android:id="@+id/saleAmount"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
+        android:id="@+id/saleQuantity"
+        android:layout_width="120dp"
+        android:layout_height="42dp"
         android:layout_marginLeft="8dp"
         android:layout_marginTop="32dp"
         android:ems="10"
+        android:hint="Enter quantity"
         android:inputType="number"
         app:layout_constraintLeft_toRightOf="@+id/saleBtn"
         app:layout_constraintTop_toBottomOf="@+id/productImage" />
 
     <EditText
-        android:id="@+id/addAmount"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
+        android:id="@+id/addQuantity"
+        android:layout_width="120dp"
+        android:layout_height="43dp"
         android:layout_marginLeft="8dp"
         android:layout_marginTop="8dp"
         android:ems="10"
+        android:hint="Enter quantity"
         android:inputType="number"
         app:layout_constraintLeft_toRightOf="@+id/addBtn"
-        app:layout_constraintTop_toBottomOf="@+id/saleAmount" />
+        app:layout_constraintTop_toBottomOf="@+id/saleQuantity" />
 
     <EditText
         android:id="@+id/orderAmount"
-        android:layout_width="100dp"
+        android:layout_width="120dp"
         android:layout_height="wrap_content"
         android:layout_marginLeft="8dp"
         android:layout_marginTop="8dp"
         android:ems="10"
+        android:hint="Enter quantity"
         android:inputType="number"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintLeft_toRightOf="@+id/orderBtn"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/addAmount" />
+        app:layout_constraintTop_toBottomOf="@+id/addQuantity" />
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fabEdit"
