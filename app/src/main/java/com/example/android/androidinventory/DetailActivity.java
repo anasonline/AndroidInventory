@@ -1,13 +1,17 @@
 package com.example.android.androidinventory;
 
 import android.app.LoaderManager;
+import android.content.ContentUris;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import com.example.android.androidinventory.data.ProductContract.ProductEntry;
@@ -27,10 +31,33 @@ public class DetailActivity extends AppCompatActivity implements
      */
     private Uri mCurrentProductUri;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
+
+        // Setup FAB to open EditorActivity
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fabEdit);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(DetailActivity.this, EditorActivity.class);
+
+                // Extract product id from the Uri
+                long contentId = ContentUris.parseId(mCurrentProductUri);
+
+                // Form the content URI that represents the specific product to be edited,
+                // by appending the "id" (passed as input to this method) onto the
+                // {@link ProductEntry#CONTENT_URI}.
+                Uri currentProductUri = ContentUris.withAppendedId(ProductEntry.CONTENT_URI, contentId);
+
+                // Set the URI on the data field of the intent
+                intent.setData(currentProductUri);
+
+                startActivity(intent);
+            }
+        });
 
         // Get the intent that was used to launch this activity,
         // in order to extract the URI data from it

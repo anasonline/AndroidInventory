@@ -1,11 +1,16 @@
 package com.example.android.androidinventory;
 
+import android.app.LoaderManager;
 import android.content.ContentValues;
+import android.content.CursorLoader;
 import android.content.Intent;
+import android.content.Loader;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -15,7 +20,13 @@ import android.widget.Toast;
 
 import com.example.android.androidinventory.data.ProductContract.ProductEntry;
 
-public class EditorActivity extends AppCompatActivity {
+public class EditorActivity extends AppCompatActivity implements
+        LoaderManager.LoaderCallbacks<Cursor> {
+
+    /**
+     * Identifier for the product data loader
+     */
+    private static final int EXISTING_PRODUCT_LOADER = 0;
 
     /**
      * Content URI for the existing product (null if it's a new product)
@@ -80,7 +91,7 @@ public class EditorActivity extends AppCompatActivity {
 
             // Initialize a loader to read the pet data from the database
             // and display the current values in the editor
-            //getLoaderManager().initLoader(EXISTING_PET_LOADER, null, this);
+            getLoaderManager().initLoader(EXISTING_PRODUCT_LOADER, null, this);
         }
 
         // Find all relevant views that we will need to read user input from
@@ -118,7 +129,7 @@ public class EditorActivity extends AppCompatActivity {
      */
     private void saveProduct() {
 
-        int price;
+        float price;
         int quantity;
 
         // Read from input fields
@@ -137,12 +148,19 @@ public class EditorActivity extends AppCompatActivity {
             return;
         }
 
+        price = Float.parseFloat(priceString);
+        quantity = Integer.parseInt(quantityString);
+
         // Create a ContentValues object where column names are the keys,
         // and pet attributes from the editor are the values.
         ContentValues values = new ContentValues();
         values.put(ProductEntry.COLUMN_PRODUCT_NAME, nameString);
-        values.put(ProductEntry.COLUMN_PRODUCT_PRICE, Float.parseFloat(priceString));
-        values.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, Integer.parseInt(quantityString));
+        values.put(ProductEntry.COLUMN_PRODUCT_PRICE, price);
+        values.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, quantity);
+
+        Log.v("XXXXXX", "name value: " + nameString);
+        Log.v("XXXXXX", "price_type: " + price);
+        Log.v("XXXXXX", "quantity_type: " + quantity);
 
         // Determine if this is a new or existing pet by checking if mCurrentProductUri is null or not
         if (mCurrentProductUri == null) {
@@ -181,4 +199,63 @@ public class EditorActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
+        // Since the editor shows all product attributes, define a projection that contains
+        // all columns from the products table
+
+        String[] projection = {
+                ProductEntry._ID,
+                ProductEntry.COLUMN_PRODUCT_NAME,
+                ProductEntry.COLUMN_PRODUCT_PRICE,
+                ProductEntry.COLUMN_PRODUCT_QUANTITY};
+
+        // This loader will execute the ContentProvider's query method on a background thread
+        return new CursorLoader(this,   // Parent activity context
+                mCurrentProductUri,   // Provider content URI to query
+                projection,             // Columns to include in the resulting Cursor
+                null,                   // No selection clause
+                null,                   // No selection arguments
+                null);                  // Default sort order
+
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+
+        // Bail early if the cursor is null or there is less than 1 row in the cursor
+        if (cursor == null || cursor.getCount() < 1) {
+            return;
+        }
+
+        // Proceed with moving to the first row of the cursor and reading data from it
+        // (This should be the only row in the cursor)
+        if (cursor.moveToFirst()) {
+            // Find the columns of product attributes that we're interested in
+            int nameColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_NAME);
+            int priceColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_PRICE);
+            int quantityColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_QUANTITY);
+
+            // Extract out the value from the Cursor for the given column index
+            String productName = cursor.getString(nameColumnIndex);
+            float productPrice = cursor.getFloat(priceColumnIndex);
+            int productQuantity = cursor.getInt(quantityColumnIndex);
+
+            // Update the TextViews with the attributes for the current product
+            mNameEditText.setText(productName);
+            mPriceEditText.setText(String.valueOf(productPrice));
+            mQuantityEditText.setText(String.valueOf(productQuantity));
+
+        }
+
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+
+        mNameEditText.setText("");
+        mPriceEditText.setText("");
+        mPriceEditText.setText("");
+
+    }
 }

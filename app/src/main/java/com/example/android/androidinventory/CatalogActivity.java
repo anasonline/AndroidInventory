@@ -16,6 +16,8 @@ import android.widget.ListView;
 
 import com.example.android.androidinventory.data.ProductContract.ProductEntry;
 
+import static android.R.attr.id;
+
 public class CatalogActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor> {
 
