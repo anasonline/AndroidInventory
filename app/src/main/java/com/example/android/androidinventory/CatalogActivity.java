@@ -16,8 +16,6 @@ import android.widget.ListView;
 
 import com.example.android.androidinventory.data.ProductContract.ProductEntry;
 
-import static android.R.attr.id;
-
 public class CatalogActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor> {
 
@@ -115,4 +113,5 @@ public class CatalogActivity extends AppCompatActivity implements
         // Callback called when the data needs to be deleted
         mCursorAdapter.swapCursor(null);
     }
+
 }
