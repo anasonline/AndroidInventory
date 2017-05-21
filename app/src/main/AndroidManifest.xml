@@ -22,7 +22,8 @@
             android:authorities="com.example.android.androidinventory"
             android:exported="false" />
 
-        <activity android:name=".EditorActivity"></activity>
+        <activity android:name=".EditorActivity" />
+        <activity android:name=".DetailActivity"></activity>
     </application>
 
 </manifest>
