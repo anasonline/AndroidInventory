@@ -141,7 +141,7 @@ public class EditorActivity extends AppCompatActivity {
         // and pet attributes from the editor are the values.
         ContentValues values = new ContentValues();
         values.put(ProductEntry.COLUMN_PRODUCT_NAME, nameString);
-        values.put(ProductEntry.COLUMN_PRODUCT_PRICE, Integer.parseInt(priceString));
+        values.put(ProductEntry.COLUMN_PRODUCT_PRICE, Float.parseFloat(priceString));
         values.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, Integer.parseInt(quantityString));
 
         // Determine if this is a new or existing pet by checking if mCurrentProductUri is null or not

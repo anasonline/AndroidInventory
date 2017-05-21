@@ -58,7 +58,7 @@
                 android:id="@+id/edit_product_price"
                 style="@style/EditorFieldStyle"
                 android:hint="@string/hint_product_price"
-                android:inputType="number" />
+                android:inputType="numberDecimal" />
 
             <TextView
                 android:id="@+id/label_weight_units"
