@@ -15,6 +15,7 @@
 
     <string name="quantity">Quantity</string>
     <string name="hint_product_quantity">Product Quantity</string>
+    <string name="image">Image</string>
 
     <string name="editor_insert_product_failed">Error with saving product!</string>
     <string name="editor_insert_product_successful">Product saved!</string>
@@ -54,6 +55,8 @@
     <!-- Dialog button text for the option to cancel deletion of the current product [CHAR LIMIT=20] -->
     <string name="cancel">Cancel</string>
 
-    <string name="blank_product_error">No data entered. Nothing is saved!</string>
+    <string name="blank_product_error">All fields should be filled out</string>
+
+    <string name="order_email_body">Hi. I would like to order %1$s units of %2$s </string>
 
 </resources>

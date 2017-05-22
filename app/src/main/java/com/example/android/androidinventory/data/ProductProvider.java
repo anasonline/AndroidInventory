@@ -30,7 +30,7 @@ public class ProductProvider extends ContentProvider {
     private static final int PRODUCTS = 100;
 
     /**
-     * URI matcher code for the content URI for a single product in the pets table
+     * URI matcher code for the content URI for a single product in the products table
      */
     private static final int PRODUCT_ID = 101;
 
@@ -172,6 +172,12 @@ public class ProductProvider extends ContentProvider {
             throw new IllegalArgumentException("Quantity is less than 0");
         }
 
+        // Check that image is not null
+
+        String image = values.getAsString(ProductEntry.COLUMN_PRODUCT_IMAGE);
+        if (image == null) {
+            throw new IllegalArgumentException("Product requires an image");
+        }
 
         // Get writable database
         SQLiteDatabase database = mDbHelper.getWritableDatabase();
@@ -184,7 +190,7 @@ public class ProductProvider extends ContentProvider {
             return null;
         }
 
-        // Notify all listeners that the data has changed for the pet content URI
+        // Notify all listeners that the data has changed for the product content URI
         getContext().getContentResolver().notifyChange(uri, null);
 
         // Return the new URI with the ID (of the newly inserted row) appended at the end
@@ -268,12 +274,21 @@ public class ProductProvider extends ContentProvider {
         }
 
         // If the {@link ProductEntry#COLUMN_PRODUCT_QUANTITY} key is present,
-        // check that the price value is valid.
+        // check that the quantity value is valid.
         if (values.containsKey(ProductEntry.COLUMN_PRODUCT_QUANTITY)) {
             // Check that the quantity is greater than or equal to 0
             Integer price = values.getAsInteger(ProductEntry.COLUMN_PRODUCT_QUANTITY);
             if (price != null && price < 0) {
                 throw new IllegalArgumentException("Product requires valid quantity");
+            }
+        }
+
+        // If the {@link ProductEntry#COLUMN_PRODUCT_IMAGE} key is present,
+        // check that the image  is valid.
+        if (values.containsKey(ProductEntry.COLUMN_PRODUCT_IMAGE)) {
+            String image = values.getAsString(ProductEntry.COLUMN_PRODUCT_IMAGE);
+            if (image == null) {
+                throw new IllegalArgumentException("Product requires an image");
             }
         }
 
@@ -297,5 +312,4 @@ public class ProductProvider extends ContentProvider {
         // Return the number of rows updated
         return rowsUpdated;
     }
-
 }

@@ -80,7 +80,6 @@ public class CatalogActivity extends AppCompatActivity implements
 
         // Kick off the loader
         getLoaderManager().initLoader(PRODUCT_LOADER, null, this);
-
     }
 
     @Override
@@ -113,5 +112,4 @@ public class CatalogActivity extends AppCompatActivity implements
         // Callback called when the data needs to be deleted
         mCursorAdapter.swapCursor(null);
     }
-
 }

@@ -1,5 +1,6 @@
 package com.example.android.androidinventory;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.LoaderManager;
 import android.content.ContentValues;
@@ -8,19 +9,32 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.example.android.androidinventory.data.ProductContract.ProductEntry;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+
+import static com.example.android.androidinventory.data.ProductProvider.LOG_TAG;
 
 public class EditorActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor> {
@@ -29,32 +43,42 @@ public class EditorActivity extends AppCompatActivity implements
      * Identifier for the product data loader
      */
     private static final int EXISTING_PRODUCT_LOADER = 0;
-
+    private static final String STATE_URI = "STATE_URI";
+    private static final int PICK_IMAGE_REQUEST = 0;
+    String productImage;
     /**
      * Content URI for the existing product (null if it's a new product)
      */
     private Uri mCurrentProductUri;
-
+    /**
+     * URI for the selected image
+     */
+    private Uri mImageUri;
     /**
      * EditText field to enter the product's name
      */
     private EditText mNameEditText;
-
     /**
      * EditText field to enter the products's price
      */
     private EditText mPriceEditText;
-
     /**
      * EditText field to enter the product's quantity
      */
     private EditText mQuantityEditText;
+    /**
+     * Button for the image selector
+     */
+    private Button mSelectImageBtn;
+    /**
+     * ImageView to show user the selected image
+     */
 
+    private ImageView mImageView;
     /**
      * Boolean flag that keeps track of whether the product has been edited (true) or not (false)
      */
     private boolean mProductHasChanged = false;
-
     /**
      * OnTouchListener that listens for any user touches on a View, implying that they are modifying
      * the view, and we change the mProductHasChanged boolean to true.
@@ -66,7 +90,6 @@ public class EditorActivity extends AppCompatActivity implements
             return false;
         }
     };
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +123,8 @@ public class EditorActivity extends AppCompatActivity implements
         mNameEditText = (EditText) findViewById(R.id.edit_product_name);
         mPriceEditText = (EditText) findViewById(R.id.edit_product_price);
         mQuantityEditText = (EditText) findViewById(R.id.edit_product_quantity);
+        mSelectImageBtn = (Button) findViewById(R.id.selectImage);
+        mImageView = (ImageView) findViewById(R.id.imageView);
 
         // Setup OnTouchListeners on all the input fields, so we can determine if the user
         // has touched or modified them. This will let us know if there are unsaved changes
@@ -107,7 +132,122 @@ public class EditorActivity extends AppCompatActivity implements
         mNameEditText.setOnTouchListener(mTouchListener);
         mPriceEditText.setOnTouchListener(mTouchListener);
         mQuantityEditText.setOnTouchListener(mTouchListener);
+        mSelectImageBtn.setOnTouchListener(mTouchListener);
 
+        mSelectImageBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                openImageSelector();
+            }
+        });
+    }
+
+    public void openImageSelector() {
+
+        Intent intent;
+
+        if (Build.VERSION.SDK_INT < 19) {
+            intent = new Intent(Intent.ACTION_GET_CONTENT);
+        } else {
+            intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+        }
+        intent.setType("image/*");
+        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        if (mImageUri != null)
+            outState.putString(STATE_URI, mImageUri.toString());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+
+        if (savedInstanceState.containsKey(STATE_URI) &&
+                !savedInstanceState.getString(STATE_URI).equals("")) {
+            mImageUri = Uri.parse(savedInstanceState.getString(STATE_URI));
+
+            ViewTreeObserver viewTreeObserver = mImageView.getViewTreeObserver();
+            viewTreeObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    mImageView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    mImageView.setImageBitmap(getBitmapFromUri(mImageUri));
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
+        // The ACTION_OPEN_DOCUMENT intent was sent with the request code READ_REQUEST_CODE.
+        // If the request code seen here doesn't match, it's the response to some other intent,
+        // and the below code shouldn't run at all.
+
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK) {
+            // The document selected by the user won't be returned in the intent.
+            // Instead, a URI to that document will be contained in the return intent
+            // provided to this method as a parameter.  Pull that uri using "resultData.getData()"
+
+            if (resultData != null) {
+                mImageUri = resultData.getData();
+                mImageView.setImageBitmap(getBitmapFromUri(mImageUri));
+            }
+        }
+    }
+
+    public Bitmap getBitmapFromUri(Uri uri) {
+
+        if (uri == null || uri.toString().isEmpty())
+            return null;
+
+        // Get the dimensions of the View
+        int targetW = mImageView.getWidth();
+        int targetH = mImageView.getHeight();
+
+        InputStream input = null;
+        try {
+            input = this.getContentResolver().openInputStream(uri);
+
+            // Get the dimensions of the bitmap
+            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+            bmOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(input, null, bmOptions);
+            input.close();
+
+            int photoW = bmOptions.outWidth;
+            int photoH = bmOptions.outHeight;
+
+            // Determine how much to scale down the image
+            int scaleFactor = Math.min(photoW / targetW, photoH / targetH);
+
+            // Decode the image file into a Bitmap sized to fill the View
+            bmOptions.inJustDecodeBounds = false;
+            bmOptions.inSampleSize = scaleFactor;
+
+            input = this.getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(input, null, bmOptions);
+            input.close();
+            return bitmap;
+
+        } catch (FileNotFoundException fne) {
+            Log.e(LOG_TAG, "Failed to load image.", fne);
+            return null;
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Failed to load image.", e);
+            return null;
+        } finally {
+            try {
+                input.close();
+            } catch (IOException ioe) {
+
+            }
+        }
     }
 
     @Override
@@ -175,7 +315,6 @@ public class EditorActivity extends AppCompatActivity implements
                 // Show a dialog that notifies the user they have unsaved changes
                 showUnsavedChangesDialog(discardButtonClickListener);
                 return true;
-
         }
         return super.onOptionsItemSelected(item);
     }
@@ -190,7 +329,6 @@ public class EditorActivity extends AppCompatActivity implements
             super.onBackPressed();
             return;
         }
-
 
         // Otherwise if there are unsaved changes, setup a dialog to warn the user.
         // Create a click listener to handle the user confirming that changes should be discarded.
@@ -212,36 +350,53 @@ public class EditorActivity extends AppCompatActivity implements
      */
     private void saveProduct() {
 
-        float price;
-        int quantity;
-
         // Read from input fields
         // Use trim to eliminate leading or trailing white space
         String nameString = mNameEditText.getText().toString().trim();
         String priceString = mPriceEditText.getText().toString().trim();
         String quantityString = mQuantityEditText.getText().toString().trim();
 
-        // Check if this is supposed to be a new product
-        // and check if all the fields in the editor are blank
-        if (mCurrentProductUri == null &&
-                TextUtils.isEmpty(nameString) && TextUtils.isEmpty(priceString) &&
-                TextUtils.isEmpty(quantityString)) {
-            // Since no fields were modified, we can return early without creating a new product.
-            // No need to create ContentValues and no need to do any ContentProvider operations.
+        String imageString;
+        if (mImageUri != null) {
+            imageString = mImageUri.toString();
+
+        } else { // then we are in edit mode. Set image to the same productImage
+            imageString = productImage;
+
+        }
+
+        // Make sure that no blank entries are accepted
+        if (TextUtils.isEmpty(nameString)) {
             Toast.makeText(this, getString(R.string.blank_product_error),
                     Toast.LENGTH_LONG).show();
             return;
         }
 
-        price = Float.parseFloat(priceString);
-        quantity = Integer.parseInt(quantityString);
+        if (TextUtils.isEmpty(priceString)) {
+            Toast.makeText(this, getString(R.string.blank_product_error),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (TextUtils.isEmpty(quantityString)) {
+            Toast.makeText(this, getString(R.string.blank_product_error),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (imageString == null) {
+            Toast.makeText(this, getString(R.string.blank_product_error),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
 
         // Create a ContentValues object where column names are the keys,
         // and product attributes from the editor are the values.
         ContentValues values = new ContentValues();
         values.put(ProductEntry.COLUMN_PRODUCT_NAME, nameString);
-        values.put(ProductEntry.COLUMN_PRODUCT_PRICE, price);
-        values.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, quantity);
+        values.put(ProductEntry.COLUMN_PRODUCT_PRICE, Float.parseFloat(priceString));
+        values.put(ProductEntry.COLUMN_PRODUCT_QUANTITY, Integer.parseInt(quantityString));
+        values.put(ProductEntry.COLUMN_PRODUCT_IMAGE, imageString);
 
         // Determine if this is a new or existing product by checking if mCurrentProductUri is null or not
         if (mCurrentProductUri == null) {
@@ -264,6 +419,7 @@ public class EditorActivity extends AppCompatActivity implements
             // and pass in the new ContentValues. Pass in null for the selection and selection args
             // because mCurrentProductUri will already identify the correct row in the database that
             // we want to modify.
+
             int rowsAffected = getContentResolver().update(mCurrentProductUri, values, null, null);
 
             // Show a toast message depending on whether or not the update was successful.
@@ -279,7 +435,6 @@ public class EditorActivity extends AppCompatActivity implements
         }
     }
 
-
     @Override
     public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
         // Since the editor shows all product attributes, define a projection that contains
@@ -289,7 +444,8 @@ public class EditorActivity extends AppCompatActivity implements
                 ProductEntry._ID,
                 ProductEntry.COLUMN_PRODUCT_NAME,
                 ProductEntry.COLUMN_PRODUCT_PRICE,
-                ProductEntry.COLUMN_PRODUCT_QUANTITY};
+                ProductEntry.COLUMN_PRODUCT_QUANTITY,
+                ProductEntry.COLUMN_PRODUCT_IMAGE};
 
         // This loader will execute the ContentProvider's query method on a background thread
         return new CursorLoader(this,   // Parent activity context
@@ -316,19 +472,20 @@ public class EditorActivity extends AppCompatActivity implements
             int nameColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_NAME);
             int priceColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_PRICE);
             int quantityColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_QUANTITY);
+            int imageColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_IMAGE);
 
             // Extract out the value from the Cursor for the given column index
             String productName = cursor.getString(nameColumnIndex);
             float productPrice = cursor.getFloat(priceColumnIndex);
             int productQuantity = cursor.getInt(quantityColumnIndex);
+            productImage = cursor.getString(imageColumnIndex);
 
-            // Update the TextViews with the attributes for the current product
+            // Update the views with the attributes for the current product
             mNameEditText.setText(productName);
             mPriceEditText.setText(String.valueOf(productPrice));
             mQuantityEditText.setText(String.valueOf(productQuantity));
-
+            mImageView.setImageURI(Uri.parse(productImage));
         }
-
     }
 
     @Override
@@ -336,7 +493,7 @@ public class EditorActivity extends AppCompatActivity implements
 
         mNameEditText.setText("");
         mPriceEditText.setText("");
-        mPriceEditText.setText("");
+        mQuantityEditText.setText("");
 
     }
 
@@ -402,6 +559,9 @@ public class EditorActivity extends AppCompatActivity implements
      * Perform the deletion of the product in the database.
      */
     private void deleteProduct() {
+
+        // Make sure the app returns to the CatalogActivity, since the ProductDetailActivity
+        // will be invalid after the delete is completed.
 
         Intent upIntent = new Intent(EditorActivity.this, CatalogActivity.class);
 

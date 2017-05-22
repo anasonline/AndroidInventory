@@ -1,11 +1,14 @@
 package com.example.android.androidinventory;
 
+import android.app.AlertDialog;
 import android.app.LoaderManager;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.CursorLoader;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,6 +18,7 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,19 +34,24 @@ public class DetailActivity extends AppCompatActivity implements
     TextView mNameTextView;
     TextView mPriceTextView;
     TextView mQuantityTextView;
+    ImageView mProductImage;
 
     Button mSaleButton;
     Button mAddButton;
+    Button mDeleteButton;
+    Button mOrderButton;
     EditText mSaleQuantity;
     EditText mAddQuantity;
+    EditText mOrderQuantity;
 
     int productQuantity;
+    String productName;
+    String productImage;
 
     /**
      * Content URI for the product to be displayed
      */
     private Uri mCurrentProductUri;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +62,10 @@ public class DetailActivity extends AppCompatActivity implements
         mAddButton = (Button) findViewById(R.id.addBtn);
         mSaleQuantity = (EditText) findViewById(R.id.saleQuantity);
         mAddQuantity = (EditText) findViewById(R.id.addQuantity);
-
+        mDeleteButton = (Button) findViewById(R.id.deleteBtn);
+        mOrderButton = (Button) findViewById(R.id.orderBtn);
+        mOrderQuantity = (EditText) findViewById(R.id.orderQuantity);
+        mProductImage = (ImageView) findViewById(R.id.productImage);
 
         // Setup FAB to open EditorActivity
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fabEdit);
@@ -88,28 +100,38 @@ public class DetailActivity extends AppCompatActivity implements
 
         // Set an OnClickListener on the Sale button
         mSaleButton.setOnClickListener(new View.OnClickListener() {
-
             @Override
             public void onClick(View view) {
-
                 sale();
-
             }
         });
 
         // Set an OnClickListener on the Add button
         mAddButton.setOnClickListener(new View.OnClickListener() {
-
             @Override
             public void onClick(View view) {
-
                 add();
-
             }
         });
 
-    }
+        // Set an OnClickListener on the Delete button
+        mDeleteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Pop up confirmation dialog for deletion
+                showDeleteConfirmationDialog();
+            }
+        });
 
+        // Set an OnClickListener on the Order button
+        mOrderButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view) {
+                order();
+            }
+        });
+    }
 
     // A helper method to perform a product sale
     public void sale() {
@@ -187,6 +209,85 @@ public class DetailActivity extends AppCompatActivity implements
         }
     }
 
+    public void deleteProduct() {
+        // Only perform the delete if this is an existing product.
+        if (mCurrentProductUri != null) {
+            // Call the ContentResolver to delete the product at the given content URI.
+            // Pass in null for the selection and selection args because the mCurrentProductUri
+            // content URI already identifies the product that we want.
+            int rowsDeleted = getContentResolver().delete(mCurrentProductUri, null, null);
+
+            // Show a toast message depending on whether or not the delete was successful.
+            if (rowsDeleted == 0) {
+                // If no rows were deleted, then there was an error with the delete.
+                Toast.makeText(this, getString(R.string.editor_delete_product_failed),
+                        Toast.LENGTH_SHORT).show();
+            } else {
+                // Otherwise, the delete was successful and we can display a toast.
+                Toast.makeText(this, getString(R.string.editor_delete_product_successful),
+                        Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        // Close the activity
+        finish();
+    }
+
+    // This helper method sends an intent to email apps to order more units of a product
+    public void order() {
+
+        // Get the quantity from the EditText
+        String quantityString = mOrderQuantity.getText().toString().trim();
+
+        // If the EditText is blank, warn the user and don't proceed
+        if (TextUtils.isEmpty(quantityString)) {
+            Toast.makeText(this, "Please enter a value!",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Create the string for the email's body
+        Resources res = getResources();
+        String email_body = res.getString(R.string.order_email_body, quantityString, productName);
+
+        String addresses[] = {"email@supplier.com"};
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/html");
+        intent.putExtra(Intent.EXTRA_EMAIL, addresses);
+        intent.putExtra(Intent.EXTRA_SUBJECT, "New order");
+        intent.putExtra(Intent.EXTRA_TEXT, email_body);
+        startActivity(Intent.createChooser(intent, "Send Email"));
+    }
+
+    /**
+     * Prompt the user to confirm that they want to delete this product.
+     */
+    private void showDeleteConfirmationDialog() {
+        // Create an AlertDialog.Builder and set the message, and click listeners
+        // for the positive and negative buttons on the dialog.
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(R.string.delete_dialog_msg);
+        builder.setPositiveButton(R.string.delete, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // User clicked the "Delete" button, so delete the product.
+                deleteProduct();
+            }
+        });
+        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // User clicked the "Cancel" button, so dismiss the dialog
+                // and continue editing the product.
+                if (dialog != null) {
+                    dialog.dismiss();
+                }
+            }
+        });
+
+        // Create and show the AlertDialog
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
     @Override
     public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
         // Define a projection that specifies the columns from the table we care about.
@@ -194,7 +295,8 @@ public class DetailActivity extends AppCompatActivity implements
                 ProductEntry._ID,
                 ProductEntry.COLUMN_PRODUCT_NAME,
                 ProductEntry.COLUMN_PRODUCT_PRICE,
-                ProductEntry.COLUMN_PRODUCT_QUANTITY};
+                ProductEntry.COLUMN_PRODUCT_QUANTITY,
+                ProductEntry.COLUMN_PRODUCT_IMAGE};
 
         // This loader will execute the ContentProvider's query method on a background thread
         return new CursorLoader(this,   // Parent activity context
@@ -219,11 +321,14 @@ public class DetailActivity extends AppCompatActivity implements
             int nameColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_NAME);
             int priceColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_PRICE);
             int quantityColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_QUANTITY);
+            int imageColumnIndex = cursor.getColumnIndex(ProductEntry.COLUMN_PRODUCT_IMAGE);
+
 
             // Extract out the value from the Cursor for the given column index
-            String productName = cursor.getString(nameColumnIndex);
+            productName = cursor.getString(nameColumnIndex);
             float productPrice = cursor.getFloat(priceColumnIndex);
             productQuantity = cursor.getInt(quantityColumnIndex);
+            productImage = cursor.getString(imageColumnIndex);
 
             // Find the views to be updated with the attributes for the current product
             mNameTextView = (TextView) findViewById(R.id.productName);
@@ -234,10 +339,8 @@ public class DetailActivity extends AppCompatActivity implements
             mNameTextView.setText(productName);
             mPriceTextView.setText(String.valueOf(productPrice));
             mQuantityTextView.setText(String.valueOf(productQuantity));
-
+            mProductImage.setImageURI(Uri.parse(productImage));
         }
-
-
     }
 
     @Override

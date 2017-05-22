@@ -155,7 +155,7 @@
         app:layout_constraintTop_toBottomOf="@+id/saleQuantity" />
 
     <EditText
-        android:id="@+id/orderAmount"
+        android:id="@+id/orderQuantity"
         android:layout_width="120dp"
         android:layout_height="wrap_content"
         android:layout_marginLeft="8dp"
